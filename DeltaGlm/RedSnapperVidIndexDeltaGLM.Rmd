@@ -1,0 +1,394 @@
+
+Red Snapper Video Index Using Delta GLM
+========
+
+
+```{r prelim,echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+rm(list=ls(all=TRUE)) 
+graphics.off()
+windows(record=T)
+setwd ("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices")
+library(MASS)
+library(doBy)
+library(statmod)
+library(Hmisc)
+
+
+#setup the dglm function
+source("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\DeltaGlm\\DeltaGLM-1-7-2-PBC-LGC.r")
+
+
+```
+
+```{r ReadData, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+ # Read in Red Snapper Data
+rs=read.csv("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\RedSnapGLMData.csv")#;head(rs);rawdat=rs
+```
+
+
+```{r ConditionData, echo=FALSE,message=FALSE, warning=FALSE}
+# Full data subsetting: 
+rs <- rs[rs$Station_Type!="Recon",]                # remove recon stations
+rs <- rs[rs$A.Video.Readable == "Yes",]         # remove invalid videos
+rs <- subset(rs, rs$Start_Depth > 0)                  # remove NA in depth
+rs <- subset(rs, rs$Start_Depth < 100)              # remove < 100 m deep
+rs <- subset(rs, rs$LastOfTemp > 0)                 # remove blank water temps
+rs <- subset(rs, rs$Turbidity != "Unknown")    # remove unknown turbidity values
+
+#Eliminate unnecessary columns
+dat=subset(rs,select=c(MC_Lutjanus.campechanus,Year,Turbidity,Current_Direction,Current_Magnitude,Substrate_Cat,
+                       Relief,Size,Biotic_Density_Cat,Biotic_Type,Biotic_Height,Start_Depth,Julian,Start_Latitude,LastOfTemp,TOD))
+names(dat)=c('cpue',names(dat)[-1])#;head(dat)
+orgnames=names(dat)
+
+#Now add in the presence field
+#temp=rep(1.0,dim(dat)[1])
+#temp[is.na(dat$cpue)]=0
+#dat=cbind(dat,temp)
+
+#rename to short names
+#names(dat)=c('cpue','y','wc','cd','cm','sc','sr','ss','bd','bt','bh','d','t','lat','temp','tod','pos')#;head(dat)
+names(dat)=c('cpue','y','wc','cd','cm','sc','sr','ss','bd','bt','bh','d','t','lat','temp','tod')#;head(dat)
+
+#replace NA in the cpue with 0
+dat$cpue[is.na(dat$cpue)]=0
+
+#now categorize the continuous variables
+#depth
+hist(dat$d,breaks=seq(10,110,by=5))
+summary(dat$d)
+#temp=cut(dat$d,breaks=c(14,25,41,52,115),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$d,2,breaks=c(0,as.numeric(summary(dat$d))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$d,2,breaks=quantile(dat$d),labels=FALSE)#;temp;table(temp)
+dat$d=temp
+
+#latitude
+hist(dat$lat,breaks=seq(27,36,by=0.25))
+summary(dat$lat)
+#temp=cut(dat$lat,breaks=c(27,29.75,31.25,32.75,34,35.25),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$lat,2,breaks=c(0,as.numeric(summary(dat$lat))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$lat,2,breaks=quantile(dat$lat),labels=FALSE)#;temp;table(temp)
+dat$lat=temp
+
+#day of year (t)
+hist(dat$t,breaks=seq(110,305,by=5))
+summary(dat$t)
+#temp=cut(dat$t,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$t,2,breaks=c(0,as.numeric(summary(dat$t))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$t,2,breaks=quantile(dat$t),labels=FALSE)#;temp;table(temp)
+dat$t=temp
+
+#water temperature (temp)
+hist(dat$temp,breaks=seq(12.25,29.25,by=0.25))
+summary(dat$temp)
+#temp=cut(dat$t,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$temp,2,breaks=c(0,as.numeric(summary(dat$temp))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$temp,2,breaks=quantile(dat$temp),labels=FALSE)#;temp;table(temp)
+dat$temp=temp
+
+#time of day (tod)
+hist(dat$tod,breaks=seq(0.4,0.95,by=0.025))
+summary(dat$tod)
+#temp=cut(dat$tod,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$tod,2,breaks=c(0,as.numeric(summary(dat$tod))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$tod,2,breaks=quantile(dat$tod),labels=FALSE)#;temp;table(temp)
+dat$tod=temp
+
+#Factorize variables
+dat$y=factor(dat$y)
+dat$d=factor(dat$d)
+dat$lat=factor(dat$lat)
+dat$t=factor(dat$t)
+dat$temp=factor(dat$temp)
+dat$tod=factor(dat$tod)
+
+
+#head(dat)
+
+
+
+```
+
+**So this bit allows variable selection of each of the model types**
+
+
+```{r VariableScreening, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+#In below, AIC values cannot be used to discrimate between error structures, bc R excludes the normalizing constant
+dat.pos=dat[dat$cpue>0,]
+dat.bin=dat; dat.bin$cpue[dat$cpue>0]=1.0
+
+par(mfcol=c(2,2))
+pos.ln.start<-glm(log(cpue)~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.pos, family=gaussian(link="identity"))
+  glm.step <- stepAIC(pos.ln.start,direction="backward")
+  pos.ln.fit=glm.step
+  #plot(pos.ln.fit)
+pos.gamma.start<-glm(cpue~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.pos, family=Gamma(link="log"))
+  glm.step <- stepAIC(pos.gamma.start,direction="backward")
+  pos.gamma.fit=glm.step
+bin.start<-glm(cpue~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.bin, family="binomial")
+  glm.step <- stepAIC(bin.start,direction="backward")
+  bin.fit1=glm.step
+  #qr.bin=qres.binom(bin.fit1)
+  #qqnorm(qr.bin,main='QQplot residuals (binomial)',  cex=0.5)
+  #qqline(qr.bin)
+
+par(mfcol=c(1,1))
+
+
+```
+
+**These are the best fitting models**
+
+lognormal model
+y + wc + cd + bd + bt + bh + t + lat
+
+gamma model
+y + wc + cd + sc + ss + bt + bh + d + t + lat
+
+Binomial Model
+y + cd + ss + bd + bt + bh + d + t + lat
+
+
+```{r ReduceDataForDGLM, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+
+#lognormal model
+#y + wc + cd + bd + bt + bh + t + lat
+#2,3,4,7,8,9,11,12
+
+#gamma model
+#y + wc + cd + sc + ss + bt + bh + d + t + lat
+#2,3,4,5,6,8,9,10,11,12
+
+#Binomial Model
+#y + cd + ss + bd + bt + bh + d + t + lat
+#2,4,6,7,8,9,10,11,12
+
+dglmdat=subset(dat,select=c(cpue,y,wc,cd,sc,ss,bd,bt,bh,d,t,lat))
+
+```
+
+
+```{r EJD Code, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+
+#lognormal model
+#y + wc + cd + bd + bt + bh + t + lat
+#2,3,4,7,8,9,11,12
+
+#gamma model
+#y + wc + cd + sc + ss + bt + bh + d + t + lat
+#2,3,4,5,6,8,9,10,11,12
+
+#Binomial Model
+#y + cd + ss + bd + bt + bh + d + t + lat
+#2,4,6,7,8,9,10,11,12
+
+
+####################
+#  This model appears to fit but does not allow aic calculation of the gamma model
+#rs.gamma=dglm(dglmdat,dist="gamma", write=T, types=c('C','F','F','F','F','F','F','F','F','F','F','F'),cols.bin=c(2,4,6,7,8,9,10,11,12),cols.pos=c(2,3,4,5,6,8,9,10,11,12))
+####################
+
+rs.gamma=dglm(dglmdat,dist="gamma", write=T, types=c('C','F','F','F','F','F','F','F','F','F','F','F'),cols.bin=c(2,4,6,7,8,9,10,11,12),cols.pos=c(2,3,4,5,8,10,11,12))
+
+rs.ln=dglm(dglmdat,dist="lognormal", write=T, types=c('C','F','F','F','F','F','F','F','F','F','F','F'),cols.bin=c(2,4,6,7,8,9,10,11,12),cols.pos=c(2,3,4,7,8,9,11,12))
+
+
+rs.gamma$aic
+rs.ln$aic
+
+#In this case, lognormal had lower AIC, so run jacknife on that distribution
+rs=dglm(dglmdat,dist="lognormal", write=T,types=c('C','F','F','F','F','F','F','F','F','F','F','F'),cols.bin=c(2,4,6,7,8,9,10,11,12),cols.pos=c(2,3,4,7,8,9,11,12),J=T)
+#save.image("deltaGLM_results_rs.RData")
+
+
+#get bootstrap variance (10 boots~6 seconds)
+# numboots=1000
+# yr=levels(unique(dglmdat$y))
+# annsamsize=sapply(1:length(yr),function(x){ length(dglmdat$y[dglmdat$y==yr[x]])})
+# boots=matrix(NA,numboots,length(yr))
+# 
+# for(boot in 1:numboots){
+# for(i in 1:length(yr)){bootdat[bootdat$y==yr[i],]=dglmdat[dglmdat$y==yr[i],][sample(1:annsamsize[i], annsamsize[i], replace = T),]}
+# boots[boot,]=dglm(bootdat,dist="lognormal", write=T,types=c('C','F','F','F','F','F','F','F','F','F','F','F'),
+#                   cols.bin=c(2,4,6,7,8,9,10,11,12),cols.pos=c(2,3,4,7,8,9,11,12))$deltaGLM.index[,1]
+#                       }
+# bootmean=apply(boots,2,mean)
+# bootvar=apply(boots,2,var)
+# boot95ci=apply(boots,2,quantile,probs=c(0.025,0.975))
+# bootcv=sqrt(bootvar)/rs$deltaGLM.index[,1]
+# varconv=t(sapply(seq(100,numboots,by=100),function(x){apply(boots[1:x,],2,var)}))
+# matplot(varconv,type='l')
+####################End bootstrap###################
+
+
+pos.error="lognormal" #specify error structure used for positive cpue (gamma or lognormal)
+
+datpos=dget('datpos.filtered.rdat') #data as filtered by glm fcn
+datbin=dget('datbin.filtered.rdat') #data as filtered by glm fcn
+
+dat.sum=dat
+dat.sum[is.na(dat.sum$cpue),1]=0
+nominal.L=summaryBy(cpue~y,data=dat.sum, FUN=c(sum, length))
+
+nom.mean=summaryBy(cpue~y,data=dat.sum, FUN=mean)
+
+N=nominal.L$cpue.length
+nomcpue=nominal.L$cpue.sum/nominal.L$cpue.length
+nomcpue.std=nomcpue/mean(nomcpue)
+
+#nominal cpue of only positive trips
+dat.raw.pos=dat.sum[dat.sum$cpue>0,]
+nominal.L.pos=summaryBy(cpue~y,data=dat.raw.pos, FUN=c(sum,length))
+nomcpue.pos=nominal.L.pos$cpue.sum/nominal.L.pos$cpue.length
+N.pos=nominal.L.pos$cpue.length
+
+prop.pos=N.pos/N
+
+windows(width=8,height=6,record=T)
+
+
+if (pos.error=="gamma") {
+  ds=deltagamma.summary     
+  dr=deltagamma.results     
+} else if (pos.error=="lognormal") {
+  ds=deltalognormal.summary 
+  dr=deltalognormal.results
+} else {cat("error structure not specified correctly \n")}
+
+Ftest=anova(dr$positive.glm, test="F")
+
+
+yrs=as.numeric(row.names(ds$deltaGLM.index))
+Season=row.names(ds$effects$t)
+Latitude=row.names(ds$effects$lat)
+WaterClarity=row.names(ds$effects$wc)
+CurrentDirection=row.names(ds$effects$cd)
+SubstrateSize=row.names(ds$effects$ss)
+BioticDiversity=row.names(ds$effects$bd)
+BioticType=row.names(ds$effects$bt)
+BioticHeight=row.names(ds$effects$bh)
+Depth=row.names(ds$effects$d)
+TimeOfDay=row.names(ds$effects$tod)
+
+U=ds$deltaGLM.index$index
+U.std=U/mean(U)
+##########lines commented out for jackknife
+cv=ds$deltaGLM.index$jack.cv
+############################
+##########lines commented out for bootrap
+#cv=bootcv
+############################
+error.U=cv*U
+error.std=cv*U.std
+
+pos.resids=dr$positive.glm$residuals
+
+errbar(x=yrs,y=U.std,yplus=U.std+1.96*error.std,yminus=U.std-1.96*error.std, ylab='Relative CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,4))
+#errbar(x=yrs,y=U.std,yplus=boot95ci[,2],yminus=boot95ci[,1], ylab='Relative CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,4))
+grid(col="lightgray")
+lines(yrs,U.std,lwd=2)
+lines(yrs,nomcpue.std,lty=2, lwd=2)
+legend("topright", bg="white", legend=c("Standardized index","Nominal"),lwd=2, lty=1:2,pch=c(1,-1))
+
+
+errbar(x=yrs,y=U,yplus=U+1.96*error.U,yminus=U-1.96*error.U, ylab='CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,0.25))
+grid(col="lightgray")
+lines(yrs,U,lwd=2)
+lines(yrs,nomcpue,lty=2, lwd=2)
+#lines(yrs,nom.mean$cpue.mean, lty=3, lwd=2)
+#legend("topright", bg="white", legend=c("Standardized index","Nominal", "Nominal mean"),lwd=2, lty=1:3,pch=c(1,-1, -1))
+legend("topright", bg="white", legend=c("Standardized index","Nominal"),lwd=2, lty=1:2,pch=c(1,-1))
+```
+
+**Essentially no difference in Jackknife and bootstrap calculated confidence intervals on the index**
+
+```{r MorePlottingCode, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+#########################################################
+###  Some diagnostics ###################################
+
+#####Proportion positive residuals
+windows(width=8,height=10,record=T)
+par(mfcol=c(3,2))
+
+#hist(prop.pos,freq=TRUE,right=TRUE,xlab='',
+#     main='Proportion positive tripsby year')  
+barplot(prop.pos,names.arg=c(2010:2012),
+     main='Proportion positive trips by year')  
+
+bin.fit=dr$binomial.glm
+pos.fit=dr$positive.glm
+bin.pred=predict(bin.fit)
+bin.resids=datbin$cpue-bin.pred
+bin.chisq.resids=bin.resids^2/bin.pred
+bin.Pearson.resids=bin.resids/sqrt(var(datbin$cpue)) #from p40 of Faraway's Extending the LM with R
+qr.binom=qres.binom(deltagamma.results$binomial.glm) #quantile residuals of Dunn and Smyth 1996
+plot(datbin$y,qr.binom,xlab="Year",main="Residuals: proportion positive")
+plot(datbin$cd,qr.binom,xlab="Current Direction",main="Residuals: proportion positive")
+plot(datbin$ss,qr.binom,xlab="Substrate Size",main="Residuals: proportion positive")
+plot(datbin$bd,qr.binom,xlab="Biotic Diversity",main="Residuals: proportion positive")
+plot(datbin$bt,qr.binom,xlab="Biotic Type",main="Residuals: proportion positive")
+plot(datbin$bh,qr.binom,xlab="Biotic Height",main="Residuals: proportion positive")
+plot(datbin$d,qr.binom,xlab="Depth",main="Residuals: proportion positive")
+plot(datbin$t,qr.binom,xlab="Season",main="Residuals: proportion positive")
+plot(datbin$lat,qr.binom,xlab="Latitude",main="Residuals: proportion positive")
+#plot(datbin$tod,qr.binom,xlab="Time Of Day",main="Residuals: proportion positive")
+
+
+
+#####Postive catch residuals
+#hist(datpos$cpue,breaks=250,freq=FALSE,right=TRUE,xlab='CPUE (whole lb/hook-hr)',
+#     main='Red snapper pos commercial CPUE',xlim=c(0,4))     
+
+####Raw residuals
+#lognormal model
+#y + wc + cd + bd + bt + bh + lat + tod
+plot(datpos$y,pos.resids,xlab="Year",main="Residuals (pos CPUE)")
+plot(datpos$wc,pos.resids,xlab="Water Clarity",main="Residuals (pos CPUE)")
+plot(datpos$cd,pos.resids,xlab="Current Direction",main="Residuals (pos CPUE)")
+plot(datpos$bd,pos.resids,xlab="Biotic Diversity",main="Residuals (pos CPUE)")
+plot(datpos$bt,pos.resids,xlab="Biotic Type",main="Residuals (pos CPUE)")
+plot(datpos$bh,pos.resids,xlab="Biotic Height",main="Residuals (pos CPUE)")
+plot(datpos$lat,pos.resids,xlab="Latitude",main="Residuals (pos CPUE)")
+#plot(datpos$tod,pos.resids,xlab="Time Of Day",main="Residuals (pos CPUE)")
+
+if (pos.error=="gamma") {
+  #qr.gamma=qres.gamma(deltagamma.results$positive.glm)  #quantile residuals 
+
+  #plot(datpos$year,qr.gamma,xlab="Year",main="Standarized (quantile) residuals: positive catch")
+  #plot(datpos$season,qr.gamma,xlab="Season",main="Standarized (quantile) residuals: positive catch")
+  #plot(datpos$area,qr.gamma,xlab="Area",main="Standarized (quantile) residuals: positive catch")
+  #plot(datpos$days,qr.gamma,xlab="Days at sea",main="Standarized (quantile) residuals: positive catch")
+  #plot(datpos$crew,qr.gamma,xlab="Crew size",main="Standarized (quantile) residuals: positive catch")    
+  #plot(datpos$gear,qr.gamma,xlab="Crew size",main="Standarized (quantile) residuals: positive catch")    
+      
+  #qqnorm(qr.gamma,main='Red snapper: standarized residuals (pos CPUE)', cex=0.5, col="gray30")
+  #qqline(qr.gamma)
+  
+  #plot(deltagamma.results$positive.glm$fitted.values,qr.gamma, 
+  #     ylab="Residuals", xlab="Predicted positive CPUE",  cex=0.5, col="gray30")  
+
+} else if (pos.error=="lognormal") {
+
+  windows(width=8,height=6,record=T)
+#  par(mfcol=c(2,1))
+  mu=mean(log(datpos$cpue)); sd=sd(log(datpos$cpue))
+  m1=min(log(datpos$cpue)); m2=max(log(datpos$cpue)); xv=seq(m1,m2,by=0.01)
+  d=dnorm(xv,mean=mu, sd=sd)
+
+  hist(log(datpos$cpue),breaks=40,freq=FALSE,right=TRUE,xlab='Log CPUE (Mean Count)',
+       main='Log CPUE (positive catch)')    
+  lines(xv,d, col="blue")      
+  
+  qqnorm(pos.resids,main='QQplot residuals (positive catch)',  cex=0.5)
+  qqline(pos.resids)
+}
+
+qr.bin=qres.binom(dr$binomial.glm)
+qqnorm(qr.bin,main='QQplot residuals (binomial)',  cex=0.5)
+qqline(qr.bin)
+#qqnorm(bin.resids)
+#qqline(bin.resids)
+
+
+```
+
