@@ -130,7 +130,7 @@ for(i in 1:wgts){
  
 # For the non zero infl part
   
-    for(i in 1:1){
+    for(i in 1:2){
       alph[i] ~ dt(0,pow(1.566267,-2),7.63179)#dnorm(0,.1)
     }
 
@@ -142,27 +142,7 @@ for(i in 1:wgts){
 
 #model
    for (i in 1:samp){
-    logit.psi[i] <- alph[1]
-
-
-
-
-#      log.ypred[i] <- bet[1]+
-# w[1]*(bet[2]*y2011[i]+bet[3]*y2012[i])+
-# w[2]*(bet[4]*wc.1[i]+bet[5]*wc.2[i])+
-# w[3]*(bet[6]*cd.s[i]+bet[7]*cd.t[i]+bet[8]*cd.u[i])+
-# w[4]*(bet[9]*cm.s[i]+bet[10]*cm.u[i])+
-# w[5]*(bet[11]*sc.l[i]+bet[12]*sc.m[i]+bet[13]*sc.n[i]+bet[14]*sc.u[i])+
-# w[6]*(bet[15]*sr.l[i]+bet[16]*sr.m[i]+bet[17]*sr.u[i])+
-# w[7]*(bet[18]*ss.cont[i]+bet[19]*ss.na[i]+bet[20]*ss.u[i])+
-# w[8]*(bet[21]*bd.l[i]+bet[22]*bd.m[i]+bet[23]*bd.n[i]+bet[24]*bd.u[i])+
-# w[9]*(bet[25]*bt.na[i]+bet[26]*bt.o[i]+bet[27]*bt.u[i])+
-# w[10]*(bet[28]*bh.l[i]+bet[29]*bh.na[i]+bet[30]*bh.u[i])+
-# w[11]*(bet[31]*d.2[i]+bet[32]*d.3[i]+bet[33]*d.4[i])+
-# w[12]*(bet[34]*t.2[i]+bet[35]*t.3[i]+bet[36]*t.4[i])+
-# w[13]*(bet[37]*lat.2[i]+bet[38]*lat.3[i]+bet[39]*lat.4[i])+
-# w[14]*(bet[40]*temp.2[i]+bet[41]*temp.3[i]+bet[42]*temp.4[i])+
-# w[15]*(bet[43]*tod.2[i]+bet[44]*tod.3[i]+bet[45]*tod.4[i])
+    
 
 
      log.ypred[i] <- bet[1]+
@@ -178,14 +158,33 @@ w[9]*(bet[26]*temp.2[i]+bet[27]*temp.3[i]+bet[28]*temp.4[i])
 
 
 
+    logit.psi[i] <- alph[1]+w[10]*alph[2]*exp(log.ypred[i])
+
+
+###Use this bit to have the global model for detection
+#w[10]*(alph[2]*y2011[i]+alph[3]*y2012[i])+
+#w[11]*(alph[4]*wc.1[i]+alph[5]*wc.2[i])+
+#w[12]*(alph[6]*cd.s[i]+alph[7]*cd.t[i]+alph[8]*cd.u[i])+
+#w[13]*(alph[9]*sc.l[i]+alph[10]*sc.m[i]+alph[11]*sc.n[i]+alph[12]*sc.u[i])+
+#w[14]*(alph[13]*bd.l[i]+alph[14]*bd.m[i]+alph[15]*bd.n[i]+alph[16]*bd.u[i])+
+#w[15]*(alph[17]*d.2[i]+alph[18]*d.3[i]+alph[19]*d.4[i])+
+#w[16]*(alph[20]*t.2[i]+alph[21]*t.3[i]+alph[22]*t.4[i])+
+#w[17]*(alph[23]*lat.2[i]+alph[24]*lat.3[i]+alph[25]*lat.4[i])+
+#w[18]*(alph[26]*temp.2[i]+alph[27]*temp.3[i]+alph[28]*temp.4[i])
+
+
+
+
+   psi[i]<-1/(1+exp(-logit.psi[i]))
    ypred[i]<-exp(log.ypred[i])
-   z[i] ~ dbern(1/(1+exp(-logit.psi[i])))
+   z[i] ~ dbern(psi[i])
    lambda[i] <- z[i]*ypred[i]
    fishseen[i] ~ dpois(lambda[i])
            }
    }
              
 ", fill=TRUE, file=modelFilename)
+
 
 jags.data = list(fishseen=dat$fishseen,y2011=as.numeric(dat$y=='2011'), y2012=as.numeric(dat$y=='2012'),
                  wc.1=as.numeric(dat$wc==1),wc.2=as.numeric(dat$wc==2),
@@ -202,21 +201,21 @@ jags.data = list(fishseen=dat$fishseen,y2011=as.numeric(dat$y=='2011'), y2012=as
                  lat.2=as.numeric(dat$lat=="2"),lat.3=as.numeric(dat$lat=="3"),lat.4=as.numeric(dat$lat=="4"),
                  temp.2=as.numeric(dat$temp=="2"),temp.3=as.numeric(dat$temp=="3"),temp.4=as.numeric(dat$temp=="4"),
                  #tod.2=as.numeric(dat$tod=="2"),tod.3=as.numeric(dat$tod=="3"),tod.4=as.numeric(dat$tod=="4"),
-                 wgts=9,
+                 wgts=10,
                  samp=dim(dat)[1])
 
-jags.inits = function(){list(bet = rnorm(28,0,.15),alph=rnorm(1,0,.15))}
+jags.inits = function(){list(bet = rnorm(28,0,.15),alph=rnorm(2,0,.15))}
 jags.parms = c('w','bet','alph')
 
 jinits=jags.inits()
-jmod = jags.model(file=modelFilename, data=jags.data, inits = jags.inits(),n.chains=3, n.adapt=1000)
+jmod = jags.model(file=modelFilename, data=jags.data, inits = jags.inits(),n.chains=3, n.adapt=100)
 #jmod = jags.model(file=modelFilename, data=jags.data,n.chains=3, n.adapt=100)   #inits = jags.inits(),
-update(jmod, n.iter=1000, by=10, progress.bar='text')
-post = coda.samples(jmod, jags.parms, n.iter=50000, thin=100)
+update(jmod, n.iter=100, by=10, progress.bar='text')
+post = coda.samples(jmod, jags.parms, n.iter=5000, thin=10)
 #dicsam=dic.samples(jmod, 1000, "popt")
-#mypost = as.matrix(post, chain=F)
-#plot(post)
-#summary(post)
+mypost = as.matrix(post, chain=F)
+plot(post)
+summary(post)
 
 
 
@@ -386,3 +385,20 @@ post = coda.samples(jmod, jags.parms, n.iter=50000, thin=100)
 
 ```
 
+
+#      log.ypred[i] <- bet[1]+
+# w[1]*(bet[2]*y2011[i]+bet[3]*y2012[i])+
+# w[2]*(bet[4]*wc.1[i]+bet[5]*wc.2[i])+
+# w[3]*(bet[6]*cd.s[i]+bet[7]*cd.t[i]+bet[8]*cd.u[i])+
+# w[4]*(bet[9]*cm.s[i]+bet[10]*cm.u[i])+
+# w[5]*(bet[11]*sc.l[i]+bet[12]*sc.m[i]+bet[13]*sc.n[i]+bet[14]*sc.u[i])+
+# w[6]*(bet[15]*sr.l[i]+bet[16]*sr.m[i]+bet[17]*sr.u[i])+
+# w[7]*(bet[18]*ss.cont[i]+bet[19]*ss.na[i]+bet[20]*ss.u[i])+
+# w[8]*(bet[21]*bd.l[i]+bet[22]*bd.m[i]+bet[23]*bd.n[i]+bet[24]*bd.u[i])+
+# w[9]*(bet[25]*bt.na[i]+bet[26]*bt.o[i]+bet[27]*bt.u[i])+
+# w[10]*(bet[28]*bh.l[i]+bet[29]*bh.na[i]+bet[30]*bh.u[i])+
+# w[11]*(bet[31]*d.2[i]+bet[32]*d.3[i]+bet[33]*d.4[i])+
+# w[12]*(bet[34]*t.2[i]+bet[35]*t.3[i]+bet[36]*t.4[i])+
+# w[13]*(bet[37]*lat.2[i]+bet[38]*lat.3[i]+bet[39]*lat.4[i])+
+# w[14]*(bet[40]*temp.2[i]+bet[41]*temp.3[i]+bet[42]*temp.4[i])+
+# w[15]*(bet[43]*tod.2[i]+bet[44]*tod.3[i]+bet[45]*tod.4[i])
