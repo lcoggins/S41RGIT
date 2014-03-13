@@ -41,8 +41,6 @@ orgnames=names(dat)
 sumcount=round(dat$MC_Lutjanus.campechanus*rs$No.Readable.Frames,0)
 dat$MC_Lutjanus.campechanus=sumcount
 
-
-
 #rename to short names
 names(dat)=c('fishseen','frames','y','wc','cd','cm','sc','sr','ss','bd','bt','bh','d','t','lat','temp','tod')#;head(dat)
 
@@ -130,7 +128,7 @@ for(i in 1:wgts){
  
 # For the non zero infl part
   
-    for(i in 1:2){
+    for(i in 1:1){
       alph[i] ~ dt(0,pow(1.566267,-2),7.63179)#dnorm(0,.1)
     }
 
@@ -158,7 +156,10 @@ w[9]*(bet[26]*temp.2[i]+bet[27]*temp.3[i]+bet[28]*temp.4[i])
 
 
 
-    logit.psi[i] <- alph[1]+w[10]*alph[2]*exp(log.ypred[i])
+logit.psi[i] <- alph[1]
+    
+#Use This bit for the psi-lambda link
+#logit.psi[i] <- alph[1]+w[10]*alph[2]*log.ypred[i]
 
 
 ###Use this bit to have the global model for detection
@@ -186,6 +187,7 @@ w[9]*(bet[26]*temp.2[i]+bet[27]*temp.3[i]+bet[28]*temp.4[i])
 ", fill=TRUE, file=modelFilename)
 
 
+dat$d=sample(c("1","2","3","4"),dim(dat)[1],replace=T)
 jags.data = list(fishseen=dat$fishseen,y2011=as.numeric(dat$y=='2011'), y2012=as.numeric(dat$y=='2012'),
                  wc.1=as.numeric(dat$wc==1),wc.2=as.numeric(dat$wc==2),
                  cd.s=as.numeric(dat$cd=="Sideways"),cd.t=as.numeric(dat$cd=="Towards"),cd.u=as.numeric(dat$cd=="Unknown"),
@@ -201,10 +203,10 @@ jags.data = list(fishseen=dat$fishseen,y2011=as.numeric(dat$y=='2011'), y2012=as
                  lat.2=as.numeric(dat$lat=="2"),lat.3=as.numeric(dat$lat=="3"),lat.4=as.numeric(dat$lat=="4"),
                  temp.2=as.numeric(dat$temp=="2"),temp.3=as.numeric(dat$temp=="3"),temp.4=as.numeric(dat$temp=="4"),
                  #tod.2=as.numeric(dat$tod=="2"),tod.3=as.numeric(dat$tod=="3"),tod.4=as.numeric(dat$tod=="4"),
-                 wgts=10,
+                 wgts=9,
                  samp=dim(dat)[1])
 
-jags.inits = function(){list(bet = rnorm(28,0,.15),alph=rnorm(2,0,.15))}
+jags.inits = function(){list(bet = rnorm(28,0,.15),alph=rnorm(1,0,.15))}
 jags.parms = c('w','bet','alph')
 
 jinits=jags.inits()

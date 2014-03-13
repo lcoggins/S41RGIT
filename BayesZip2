@@ -11,7 +11,7 @@ for(i in 1:wgts){
  
 # For the non zero infl part
   
-    for(i in 1:1){
+    for(i in 1:2){
       alph[i] ~ dt(0,pow(1.566267,-2),7.63179)#dnorm(0,.1)
     }
 
@@ -39,10 +39,10 @@ w[9]*(bet[26]*temp.2[i]+bet[27]*temp.3[i]+bet[28]*temp.4[i])
 
 
 
-    logit.psi[i] <- alph[1]
+    #logit.psi[i] <- alph[1]
     
 #Use This bit for the psi-lambda link
-#logit.psi[i] <- alph[1]+w[10]*alph[2]*log.ypred[i]
+logit.psi[i] <- alph[1]+w[10]*alph[2]*log.ypred[i]
 
 
 ###Use this bit to have the global model for detection
