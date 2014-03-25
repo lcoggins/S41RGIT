@@ -1,0 +1,240 @@
+
+Red Snapper Video Index Using Poisson GLM
+========
+
+
+```{r prelim,echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+rm(list=ls(all=TRUE)) 
+graphics.off()
+windows(record=T)
+setwd ("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\S41RGIT")
+library(MASS)
+library(doBy)
+library(statmod)
+library(Hmisc)
+#library(rjags)
+#library(lattice)
+#detach(package:glmmADMB)
+
+
+```
+
+```{r ReadData, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
+ # Read in Red Snapper Data
+rs=read.csv("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\ConfData\\RedSnapGLMData.csv")#;head(rs)
+
+```
+
+
+```{r ConditionData, echo=FALSE,message=FALSE, warning=FALSE}
+# Full data subsetting: 
+rs <- rs[rs$Station_Type!="Recon",]                # remove recon stations
+rs <- rs[rs$A.Video.Readable == "Yes",]         # remove invalid videos
+rs <- subset(rs, rs$Start_Depth > 0)                  # remove NA in depth
+rs <- subset(rs, rs$Start_Depth < 100)              # remove < 100 m deep
+rs <- subset(rs, rs$LastOfTemp > 0)                 # remove blank water temps
+rs <- subset(rs, rs$Turbidity != "Unknown")    # remove unknown turbidity values
+rs <- subset(rs, rs$No.Readable.Frames >19)    # remove zero readable frames
+
+#Eliminate unnecessary columns
+dat=subset(rs,select=c(MC_Lutjanus.campechanus,No.Readable.Frames,Year,Turbidity,Current_Direction,Current_Magnitude,Substrate_Cat,Relief,Size,Biotic_Density_Cat,Biotic_Type,Biotic_Height,Start_Depth,Julian,Start_Latitude,LastOfTemp,TOD))
+orgnames=names(dat)
+
+sumcount=round(dat$MC_Lutjanus.campechanus*rs$No.Readable.Frames,0)
+dat$MC_Lutjanus.campechanus=sumcount
+
+#rename to short names
+names(dat)=c('fishseen','frames','y','wc','cd','cm','sc','sr','ss','bd','bt','bh','d','t','lat','temp','tod')#;head(dat)
+
+#replace NA in the cpue with 0
+dat$fishseen[is.na(dat$fishseen)]=0
+
+#rescale frames
+dat$frames=dat$frames/41
+#now categorize the continuous variables
+#depth
+hist(dat$d,breaks=seq(10,110,by=5))
+summary(dat$d)
+#temp=cut(dat$d,breaks=c(14,25,41,52,115),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$d,2,breaks=c(0,as.numeric(summary(dat$d))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$d,2,breaks=quantile(dat$d),labels=FALSE)#;temp;table(temp)
+dat$d=temp
+
+#latitude
+hist(dat$lat,breaks=seq(27,36,by=0.25))
+summary(dat$lat)
+#temp=cut(dat$lat,breaks=c(27,29.75,31.25,32.75,34,35.25),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$lat,2,breaks=c(0,as.numeric(summary(dat$lat))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$lat,2,breaks=quantile(dat$lat),labels=FALSE)#;temp;table(temp)
+dat$lat=temp
+
+#day of year (t)
+hist(dat$t,breaks=seq(110,305,by=5))
+summary(dat$t)
+#temp=cut(dat$t,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$t,2,breaks=c(0,as.numeric(summary(dat$t))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$t,2,breaks=quantile(dat$t),labels=FALSE)#;temp;table(temp)
+dat$t=temp
+
+#water temperature (temp)
+hist(dat$temp,breaks=seq(12.25,29.25,by=0.25))
+summary(dat$temp)
+#temp=cut(dat$t,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$temp,2,breaks=c(0,as.numeric(summary(dat$temp))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$temp,2,breaks=quantile(dat$temp),labels=FALSE)#;temp;table(temp)
+dat$temp=temp
+
+#time of day (tod)
+hist(dat$tod,breaks=seq(0.4,0.95,by=0.025))
+summary(dat$tod)
+#temp=cut(dat$tod,breaks=c(##,##,##,##,##,##),labels=FALSE)#;temp;table(temp)
+#temp=cut(dat$tod,2,breaks=c(0,as.numeric(summary(dat$tod))[-c(1,4)]),labels=FALSE);temp;table(temp)
+temp=cut(dat$tod,2,breaks=quantile(dat$tod),labels=FALSE)#;temp;table(temp)
+dat$tod=temp
+
+#Factorize variables
+dat$y=factor(dat$y)
+dat$d=factor(dat$d)
+dat$lat=factor(dat$lat)
+dat$t=factor(dat$t)
+dat$temp=factor(dat$temp)
+dat$tod=factor(dat$tod)
+
+#get rid of unused factors for dat$wc
+dat$wc=factor(dat$wc)
+
+head(dat)
+
+windows(record=T)
+xyplot(fishseen~sc|y,data=dat,xlab='sc')
+xyplot(fishseen~ss|y,data=dat,xlab='ss')
+xyplot(fishseen~bt|y,data=dat,xlab='bt')
+xyplot(fishseen~bh|y,data=dat,xlab='bh')
+xyplot(fishseen~bd|y,data=dat,xlab='bd')
+xyplot(fishseen~cm|y,data=dat,xlab='cm')
+xyplot(fishseen~cd|y,data=dat,xlab='cd')
+
+plot.design(fishseen~y + wc + cd + cm + sc + sr + ss + bd + bt + bh + d + t + lat + temp + tod,data=dat)
+#interaction.plot(dat$bh,dat$y,dat$fishseen)
+#interaction.plot(dat$wc,dat$bd,dat$fishseen)
+
+#plot(fishseen~y + wc + cd + cm + sc + sr + ss + bd + bt + bh + d + t + lat + temp + tod,data=dat)
+
+
+ 
+```
+ 
+ **Model**
+ 
+```{r Poismod}
+
+Poismod=glm(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp + offset(frames),data=dat,  family = "poisson");summary(Poismod)
+
+
+Pois.step = stepAIC(Poismod,direction="backward");summary(Pois.step)
+Poismod=Pois.step
+
+windows(width=8,height=6,record=T)
+resids=residuals(Poismod)
+
+plot(fitted(Poismod),resids)
+qr.Poismod=qres.pois(Poismod)
+qqnorm(qr.Poismod,ylim=c(-4,10),main='QQplot residuals (qr.Poismod)',  cex=0.5)
+qqline(qr.Poismod)
+plot(dat$y,resids,xlab="Year",main="Residuals (Poismod)")
+plot(dat$wc,resids,xlab="Water Clarity",main="Residuals (Poismod)")
+plot(dat$cd,resids,xlab="Current Direction",main="Residuals (Poismod)")
+plot(dat$bt,resids,xlab="Biotic Type",main="Residuals (Poismod)")
+plot(dat$lat,resids,xlab="Latitude",main="Residuals (Poismod)")
+
+
+hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='Poisson GLM')  
+d=hist(predict(Poismod,type='response'),breaks=0:max(dat$fishseen),plot=FALSE)
+lines(seq(0.5,max(dat$fishseen),by=1),d$counts, col="blue",type='l')      
+hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='Poisson GLM',ylim=c(0,200))  
+lines(seq(0.5,max(dat$fishseen),by=1),d$counts, col="blue",type='b')      
+
+
+new.dat=expand.grid(y=levels(dat$y),
+                    wc=levels(dat$wc),
+                    #cm=levels(dat$cm),
+                    cd=levels(dat$cd),
+                    sc=levels(dat$sc),
+                    #ss=levels(dat$ss),
+                    #bt=levels(dat$bt),
+                    #bh=levels(dat$bh),
+                    bd=levels(dat$bd),
+                    d=levels(dat$d),
+                    t=levels(dat$t),
+                    lat=levels(dat$lat),
+                    temp=levels(dat$temp),
+                    #tod=levels(dat$tod),
+                    frames=1)
+
+new.dat=cbind(new.dat,predict(Poismod,new.dat))
+names(new.dat)[dim(new.dat)[2]]="Predicted"
+resvec=summaryBy(Predicted~y,data=new.dat,FUN=mean)[,2]
+index = resvec/mean(resvec)
+plot(index,type='b')
+
+
+```
+ 
+ 
+THIS quasipoisson model seems to return the same results as the poisson 
+ 
+```{r QPoismod,eval=FALSE}
+
+QPoismod=glm(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp + offset(frames),data=dat,  family = "quasipoisson");summary(QPoismod)
+
+
+#QPois.step = stepAIC(QPoismod,direction="backward");summary(QPois.step)
+#QPoismod=QPois.step
+
+windows(width=8,height=6,record=T)
+resids=residuals(QPoismod)
+
+plot(fitted(QPoismod),resids)
+#qr.QPoismod=qres.QPois(QPoismod)
+#qqnorm(qr.QPoismod,ylim=c(-4,10),main='QQplot residuals (qr.QPoismod)',  cex=0.5)
+#qqline(qr.QPoismod)
+plot(dat$y,resids,xlab="Year",main="Residuals (QPoismod)")
+plot(dat$wc,resids,xlab="Water Clarity",main="Residuals (QPoismod)")
+plot(dat$cd,resids,xlab="Current Direction",main="Residuals (QPoismod)")
+plot(dat$bt,resids,xlab="Biotic Type",main="Residuals (QPoismod)")
+plot(dat$lat,resids,xlab="Latitude",main="Residuals (QPoismod)")
+
+
+hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='QPoisson GLM')  
+d=hist(predict(QPoismod,type='response'),breaks=0:max(dat$fishseen),plot=FALSE)
+lines(seq(0.5,max(dat$fishseen),by=1),d$counts, col="blue",type='l')      
+hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='QPoisson GLM',ylim=c(0,200))  
+lines(seq(0.5,max(dat$fishseen),by=1),d$counts, col="blue",type='b')      
+
+
+new.dat=expand.grid(y=levels(dat$y),
+                    wc=levels(dat$wc),
+                    #cm=levels(dat$cm),
+                    cd=levels(dat$cd),
+                    sc=levels(dat$sc),
+                    #ss=levels(dat$ss),
+                    #bt=levels(dat$bt),
+                    #bh=levels(dat$bh),
+                    bd=levels(dat$bd),
+                    d=levels(dat$d),
+                    t=levels(dat$t),
+                    lat=levels(dat$lat),
+                    temp=levels(dat$temp),
+                    #tod=levels(dat$tod),
+                    frames=1)
+
+new.dat=cbind(new.dat,predict(QPoismod,new.dat))
+names(new.dat)[dim(new.dat)[2]]="Predicted"
+resvec=summaryBy(Predicted~y,data=new.dat,FUN=mean)[,2]
+index = resvec/mean(resvec)
+plot(index,type='b')
+
+
+```
+ 
+ 
