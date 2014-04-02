@@ -15,14 +15,13 @@ library(Hmisc)
 
 
 #setup the dglm function
-source("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\DeltaGlm\\DeltaGLM-1-7-2-PBC-LGC.r")
-
+source("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\S41RGIT\\DeltaGlm\\DeltaGLM-1-7-2-PBC-LGC.r")
 
 ```
 
 ```{r ReadData, echo=FALSE,message=FALSE, warning=FALSE,error=FALSE}
  # Read in Red Snapper Data
-rs=read.csv("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\RedSnapGLMData.csv")#;head(rs);rawdat=rs
+rs=read.csv("\\\\CCFHR-S-1534090\\popdyn1\\SEDAR\\SEDAR 41\\SEFISIndices\\ConfData\\RedSnapGLMData.csv")#;head(rs);rawdat=rs
 ```
 
 
@@ -102,6 +101,31 @@ dat$t=factor(dat$t)
 dat$temp=factor(dat$temp)
 dat$tod=factor(dat$tod)
 
+dsum=as.matrix(table(dat$d,dat$y))
+dprop=cbind(dsum[,1]/colSums(dsum)[1],dsum[,2]/colSums(dsum)[2],dsum[,3]/colSums(dsum)[3])
+dtot=as.vector(table(dat$d))
+ptot=dtot/sum(dtot)
+
+lsum=as.matrix(table(dat$lat,dat$y))
+lprop=cbind(lsum[,1]/colSums(lsum)[1],lsum[,2]/colSums(lsum)[2],lsum[,3]/colSums(lsum)[3])
+ltot=as.vector(table(dat$lat))
+ptot=ltot/sum(ltot)
+
+tsum=as.matrix(table(dat$temp,dat$y))
+tprop=cbind(tsum[,1]/colSums(tsum)[1],tsum[,2]/colSums(tsum)[2],tsum[,3]/colSums(tsum)[3])
+ttot=as.vector(table(dat$temp))
+ptot=ttot/sum(ttot)
+
+jsum=as.matrix(table(dat$t,dat$y))
+jprop=cbind(jsum[,1]/colSums(jsum)[1],jsum[,2]/colSums(jsum)[2],jsum[,3]/colSums(jsum)[3])
+jtot=as.vector(table(dat$t))
+ptot=ttot/sum(ttot)
+
+todsum=as.matrix(table(dat$tod,dat$y))
+todprop=cbind(todsum[,1]/colSums(todsum)[1],todsum[,2]/colSums(todsum)[2],todsum[,3]/colSums(todsum)[3])
+todtot=as.vector(table(dat$tod))
+ptot=ttot/sum(ttot)
+
 
 #head(dat)
 
@@ -122,15 +146,36 @@ pos.ln.start<-glm(log(cpue)~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=
   glm.step <- stepAIC(pos.ln.start,direction="backward")
   pos.ln.fit=glm.step
   #plot(pos.ln.fit)
+
+summary(glm(log(cpue)~y+wc+cd+bd+bt+bh+t+lat, data=dat.pos, family=gaussian(link="identity")))
+summary(glm(log(cpue)~y+wc+cd+sc+bd+bt+bh+t+lat, data=dat.pos, family=gaussian(link="identity")))
+summary(glm(log(cpue)~y+wc+cd+sc+ss+bd+bt+bh+t+lat, data=dat.pos, family=gaussian(link="identity")))
+summary(glm(log(cpue)~y+wc+cd+sc+ss+bd+bt+bh+t+lat+tod, data=dat.pos, family=gaussian(link="identity")))
+
+
+
+
+
 pos.gamma.start<-glm(cpue~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.pos, family=Gamma(link="log"))
   glm.step <- stepAIC(pos.gamma.start,direction="backward")
   pos.gamma.fit=glm.step
+
+
+
+
+
 bin.start<-glm(cpue~y+wc+cd+cm+sc+sr+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.bin, family="binomial")
   glm.step <- stepAIC(bin.start,direction="backward")
   bin.fit1=glm.step
   #qr.bin=qres.binom(bin.fit1)
   #qqnorm(qr.bin,main='QQplot residuals (binomial)',  cex=0.5)
   #qqline(qr.bin)
+
+summary(glm(cpue~y+cd+ss+bd+bt+bh+d+t+lat, data=dat.bin, family="binomial"))
+summary(glm(cpue~y+cd+ss+bd+bt+bh+d+t+lat+temp, data=dat.bin, family="binomial"))
+summary(glm(cpue~y+cd+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.bin, family="binomial"))
+summary(glm(cpue~y+wc+cd+ss+bd+bt+bh+d+t+lat+temp+tod, data=dat.bin, family="binomial"))
+
 
 par(mfcol=c(1,1))
 
@@ -244,8 +289,8 @@ N.pos=nominal.L.pos$cpue.length
 
 prop.pos=N.pos/N
 
-windows(width=8,height=6,record=T)
-
+windows(width=6,height=8,record=T)
+par(mfcol=c(2,1))
 
 if (pos.error=="gamma") {
   ds=deltagamma.summary     
@@ -283,7 +328,8 @@ error.std=cv*U.std
 
 pos.resids=dr$positive.glm$residuals
 
-errbar(x=yrs,y=U.std,yplus=U.std+1.96*error.std,yminus=U.std-1.96*error.std, ylab='Relative CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,4))
+errbar(x=yrs,y=U.std,yplus=U.std+1.96*error.std,yminus=U.std-1.96*error.std, ylab='Relative CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,4),xaxt="n")
+axis(1,at=2010:2012)
 #errbar(x=yrs,y=U.std,yplus=boot95ci[,2],yminus=boot95ci[,1], ylab='Relative CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,4))
 grid(col="lightgray")
 lines(yrs,U.std,lwd=2)
@@ -291,7 +337,8 @@ lines(yrs,nomcpue.std,lty=2, lwd=2)
 legend("topright", bg="white", legend=c("Standardized index","Nominal"),lwd=2, lty=1:2,pch=c(1,-1))
 
 
-errbar(x=yrs,y=U,yplus=U+1.96*error.U,yminus=U-1.96*error.U, ylab='CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,0.25))
+errbar(x=yrs,y=U,yplus=U+1.96*error.U,yminus=U-1.96*error.U, ylab='CPUE (Mean Count)', xlab='Year', lwd=2, ylim=c(0,0.25),xaxt="n")
+axis(1,at=2010:2012)
 grid(col="lightgray")
 lines(yrs,U,lwd=2)
 lines(yrs,nomcpue,lty=2, lwd=2)
@@ -322,6 +369,7 @@ bin.resids=datbin$cpue-bin.pred
 bin.chisq.resids=bin.resids^2/bin.pred
 bin.Pearson.resids=bin.resids/sqrt(var(datbin$cpue)) #from p40 of Faraway's Extending the LM with R
 qr.binom=qres.binom(deltagamma.results$binomial.glm) #quantile residuals of Dunn and Smyth 1996
+
 plot(datbin$y,qr.binom,xlab="Year",main="Residuals: proportion positive")
 plot(datbin$cd,qr.binom,xlab="Current Direction",main="Residuals: proportion positive")
 plot(datbin$ss,qr.binom,xlab="Substrate Size",main="Residuals: proportion positive")
@@ -329,7 +377,7 @@ plot(datbin$bd,qr.binom,xlab="Biotic Diversity",main="Residuals: proportion posi
 plot(datbin$bt,qr.binom,xlab="Biotic Type",main="Residuals: proportion positive")
 plot(datbin$bh,qr.binom,xlab="Biotic Height",main="Residuals: proportion positive")
 plot(datbin$d,qr.binom,xlab="Depth",main="Residuals: proportion positive")
-plot(datbin$t,qr.binom,xlab="Season",main="Residuals: proportion positive")
+plot(datbin$t,qr.binom,xlab="Julian Day",main="Residuals: proportion positive")
 plot(datbin$lat,qr.binom,xlab="Latitude",main="Residuals: proportion positive")
 #plot(datbin$tod,qr.binom,xlab="Time Of Day",main="Residuals: proportion positive")
 
@@ -341,7 +389,9 @@ plot(datbin$lat,qr.binom,xlab="Latitude",main="Residuals: proportion positive")
 
 ####Raw residuals
 #lognormal model
-#y + wc + cd + bd + bt + bh + lat + tod
+#y + wc + cd + bd + bt + bh + lat + t
+windows(width=8,height=10,record=T)
+par(mfcol=c(2,2))
 plot(datpos$y,pos.resids,xlab="Year",main="Residuals (pos CPUE)")
 plot(datpos$wc,pos.resids,xlab="Water Clarity",main="Residuals (pos CPUE)")
 plot(datpos$cd,pos.resids,xlab="Current Direction",main="Residuals (pos CPUE)")
@@ -349,7 +399,7 @@ plot(datpos$bd,pos.resids,xlab="Biotic Diversity",main="Residuals (pos CPUE)")
 plot(datpos$bt,pos.resids,xlab="Biotic Type",main="Residuals (pos CPUE)")
 plot(datpos$bh,pos.resids,xlab="Biotic Height",main="Residuals (pos CPUE)")
 plot(datpos$lat,pos.resids,xlab="Latitude",main="Residuals (pos CPUE)")
-#plot(datpos$tod,pos.resids,xlab="Time Of Day",main="Residuals (pos CPUE)")
+plot(datpos$t,pos.resids,xlab="Julian Day",main="Residuals (pos CPUE)")
 
 if (pos.error=="gamma") {
   #qr.gamma=qres.gamma(deltagamma.results$positive.glm)  #quantile residuals 
@@ -370,7 +420,7 @@ if (pos.error=="gamma") {
 } else if (pos.error=="lognormal") {
 
   windows(width=8,height=6,record=T)
-#  par(mfcol=c(2,1))
+  par(mfcol=c(2,1))
   mu=mean(log(datpos$cpue)); sd=sd(log(datpos$cpue))
   m1=min(log(datpos$cpue)); m2=max(log(datpos$cpue)); xv=seq(m1,m2,by=0.01)
   d=dnorm(xv,mean=mu, sd=sd)

@@ -34,7 +34,7 @@ rs <- subset(rs, rs$Start_Depth > 0)                  # remove NA in depth
 rs <- subset(rs, rs$Start_Depth < 100)              # remove < 100 m deep
 rs <- subset(rs, rs$LastOfTemp > 0)                 # remove blank water temps
 rs <- subset(rs, rs$Turbidity != "Unknown")    # remove unknown turbidity values
-rs <- subset(rs, rs$No.Readable.Frames >19)    # remove zero readable frames
+rs <- subset(rs, rs$No.Readable.Frames ==41)    # remove zero readable frames
 
 #Eliminate unnecessary columns
 dat=subset(rs,select=c(MC_Lutjanus.campechanus,No.Readable.Frames,Year,Turbidity,Current_Direction,Current_Magnitude,Substrate_Cat,Relief,Size,Biotic_Density_Cat,Biotic_Type,Biotic_Height,Start_Depth,Julian,Start_Latitude,LastOfTemp,TOD))
@@ -52,8 +52,8 @@ names(dat)=c('fishseen','frames','y','wc','cd','cm','sc','sr','ss','bd','bt','bh
 dat$fishseen[is.na(dat$fishseen)]=0
 
 #rescale frames
-dat$frames=dat$frames/41
-dat$frames=log(dat$frames)
+#dat$frames=dat$frames/41
+#dat$frames=log(dat$frames)
 #now categorize the continuous variables
 #depth
 hist(dat$d,breaks=seq(10,110,by=5))
@@ -119,10 +119,10 @@ The ZINB is clearly preferred in the likelihood ratio test and fits the data bet
 
 ```{r ZIP-ZINB, echo=T,message=T, warning=T}
 
-zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp )
 zipmod=zeroinfl(zipform,  dist = "poisson", link = "logit",data=dat);summary(zipmod)
 
-nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp )
 nbmod=zeroinfl(nbform,  dist = "negbin", link = "logit",data=dat);summary(nbmod)
 
 lrtest(zipmod,nbmod)
