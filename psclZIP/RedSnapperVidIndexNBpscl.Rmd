@@ -35,6 +35,7 @@ rs <- subset(rs, rs$Start_Depth < 100)              # remove < 100 m deep
 rs <- subset(rs, rs$LastOfTemp > 0)                 # remove blank water temps
 rs <- subset(rs, rs$Turbidity != "Unknown")    # remove unknown turbidity values
 rs <- subset(rs, rs$No.Readable.Frames ==41)    # remove zero readable frames
+#rs <- subset(rs, rs$No.Readable.Frames >19)    # remove zero readable frames
 
 #Eliminate unnecessary columns
 dat=subset(rs,select=c(MC_Lutjanus.campechanus,No.Readable.Frames,Year,Turbidity,Current_Direction,Current_Magnitude,Substrate_Cat,Relief,Size,Biotic_Density_Cat,Biotic_Type,Biotic_Height,Start_Depth,Julian,Start_Latitude,LastOfTemp,TOD))
@@ -119,10 +120,14 @@ The ZINB is clearly preferred in the likelihood ratio test and fits the data bet
 
 ```{r ZIP-ZINB, echo=T,message=T, warning=T}
 
-zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp )
+#zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |y + wc + cd + sc + bd + d + t + lat + temp )
+#zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |y  )
+zipform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |1.  )
 zipmod=zeroinfl(zipform,  dist = "poisson", link = "logit",data=dat);summary(zipmod)
 
-nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp )
+#nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |y + wc + cd + sc + bd + d + t + lat + temp )
+#nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |y )
+nbform=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp |1. )
 nbmod=zeroinfl(nbform,  dist = "negbin", link = "logit",data=dat);summary(nbmod)
 
 lrtest(zipmod,nbmod)
@@ -177,34 +182,42 @@ points(dat$fishseen,fitted(zipmod),col='red',pch=19)
 
 
 ###Remove water clarity and current variables from mean
-nbform1=formula(fishseen~ y  + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform1=formula(fishseen~ y  + cd + sc + bd + d + t + lat + temp |y + wc + cd + d + t + temp )
+nbform1=formula(fishseen~ y  + cd + sc + bd + d + t + lat + temp |1.)
 nbmod1=zeroinfl(nbform1,  dist = "negbin", link = "logit",data=dat);summary(nbmod1)
 
-nbform2=formula(fishseen~ y  + wc + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform2=formula(fishseen~ y  + wc + sc + bd + d + t + lat + temp |y + wc + cd + d + t + temp  )
+nbform2=formula(fishseen~ y  + wc + sc + bd + d + t + lat + temp |1.)
 nbmod2=zeroinfl(nbform2,  dist = "negbin", link = "logit",data=dat);summary(nbmod2)
 
 
 ###Remove benthic variables from mean
-nbform3=formula(fishseen~ y + wc + cd + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform3=formula(fishseen~ y + wc + cd + bd + d + t + lat + temp |y + wc + cd + d + t + temp  )
+nbform3=formula(fishseen~ y + wc + cd + bd + d + t + lat + temp |1.)
 nbmod3=zeroinfl(nbform3,  dist = "negbin", link = "logit",data=dat);summary(nbmod3)
 
-nbform4=formula(fishseen~ y + wc + cd + sc + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform4=formula(fishseen~ y + wc + cd + sc + d + t + lat + temp |y + wc + cd + d + t + temp  )
+nbform4=formula(fishseen~ y + wc + cd + sc + d + t + lat + temp |1.)
 nbmod4=zeroinfl(nbform4,  dist = "negbin", link = "logit",data=dat);summary(nbmod4)
 
 ###Remove depth from mean
-nbform5=formula(fishseen~ y + wc + cd + sc + bd + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform5=formula(fishseen~ y + wc + cd + sc + bd + t + lat + temp |y + wc + cd + d + t + temp  )
+nbform5=formula(fishseen~ y + wc + cd + sc + bd + t + lat + temp |1.)
 nbmod5=zeroinfl(nbform5,  dist = "negbin", link = "logit",data=dat);summary(nbmod5)
 
 #### Remove Season From mean 
-nbform6=formula(fishseen~ y + wc + cd + sc + bd + d + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform6=formula(fishseen~ y + wc + cd + sc + bd + d + lat + temp |y + wc + cd + d + t + temp )
+nbform6=formula(fishseen~ y + wc + cd + sc + bd + d + lat + temp |1.)
 nbmod6=zeroinfl(nbform6,  dist = "negbin", link = "logit",data=dat);summary(nbmod6)
 
 #### Remove Latitude From mean 
-nbform7=formula(fishseen~ y + wc + cd + sc + bd + d + t + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform7=formula(fishseen~ y + wc + cd + sc + bd + d + t + temp |y + wc + cd + d + t + temp )
+nbform7=formula(fishseen~ y + wc + cd + sc + bd + d + t + temp |1.)
 nbmod7=zeroinfl(nbform7,  dist = "negbin", link = "logit",data=dat);summary(nbmod7)
 
 #### Remove Temperature From mean 
-nbform8=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat  +offset(frames)|y + wc + cd + sc + bd + d + t + lat + temp +offset(frames))
+#nbform8=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat  |y + wc + cd + d + t + temp  )
+nbform8=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat  |1.)
 nbmod8=zeroinfl(nbform8,  dist = "negbin", link = "logit",data=dat);summary(nbmod8)
 
 lrtest(nbmod1,nbmod)
@@ -233,172 +246,286 @@ AIC(nbmod)-AIC(nbmod6)
 AIC(nbmod)-AIC(nbmod7)
 AIC(nbmod)-AIC(nbmod8)
 
-####Retain All variables for the count... clarity and temperature were marginal
 
 
+# Model 6 is the best performing so step down to it
+
+
+###Remove water clarity and current variables from mean
+nbform6a=formula(fishseen~ y + cd + sc + bd + d + lat + temp |1.)
+nbmod6a=zeroinfl(nbform6a,  dist = "negbin", link = "logit",data=dat);summary(nbmod6a)
+
+nbform6b=formula(fishseen~ y + wc + sc + bd + d + lat + temp |1.)
+nbmod6b=zeroinfl(nbform6b,  dist = "negbin", link = "logit",data=dat);summary(nbmod6b)
+
+
+###Remove benthic variables from mean
+nbform6c=formula(fishseen~ y + wc + cd + bd + d + lat + temp |1.)
+nbmod6c=zeroinfl(nbform6c,  dist = "negbin", link = "logit",data=dat);summary(nbmod6c)
+
+nbform6d=formula(fishseen~ y + wc + cd + sc + d + lat + temp |1.)
+nbmod6d=zeroinfl(nbform6d,  dist = "negbin", link = "logit",data=dat);summary(nbmod6d)
+
+###Remove depth from mean
+nbform6e=formula(fishseen~ y + wc + cd + sc + bd + lat + temp |1.)
+nbmod6e=zeroinfl(nbform6e,  dist = "negbin", link = "logit",data=dat);summary(nbmod6e)
+
+
+#### Remove Latitude From mean 
+nbform6f=formula(fishseen~ y + wc + cd + sc + bd + d + temp |1.)
+nbmod6f=zeroinfl(nbform6f,  dist = "negbin", link = "logit",data=dat);summary(nbmod6f)
+
+#### Remove Temperature From mean 
+nbform6g=formula(fishseen~ y + wc + cd + sc + bd + d + lat |1.)
+nbmod6g=zeroinfl(nbform6g,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g)
+
+lrtest(nbmod6a,nbmod6)
+lrtest(nbmod6b,nbmod6)
+lrtest(nbmod6c,nbmod6)
+lrtest(nbmod6d,nbmod6)
+lrtest(nbmod6e,nbmod6)
+lrtest(nbmod6f,nbmod6)
+lrtest(nbmod6g,nbmod6)
+AIC(nbmod6)
+AIC(nbmod6a)
+AIC(nbmod6b)
+AIC(nbmod6c)
+AIC(nbmod6d)
+AIC(nbmod6e)
+AIC(nbmod6f)
+AIC(nbmod6g)
+AIC(nbmod6)-AIC(nbmod6a)
+AIC(nbmod6)-AIC(nbmod6b)
+AIC(nbmod6)-AIC(nbmod6c)
+AIC(nbmod6)-AIC(nbmod6d)
+AIC(nbmod6)-AIC(nbmod6e)
+AIC(nbmod6)-AIC(nbmod6f)
+AIC(nbmod6)-AIC(nbmod6g)
+
+
+# Model 6g is the best performing so step down to it
+
+###Remove water clarity and current variables from mean
+nbform6g1=formula(fishseen~ y + cd + sc + bd + d + lat |1.)
+nbmod6g1=zeroinfl(nbform6g1,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1)
+
+nbform6g2=formula(fishseen~ y + wc + sc + bd + d + lat |1.)
+nbmod6g2=zeroinfl(nbform6g2,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g2)
+
+
+###Remove benthic variables from mean
+nbform6g3=formula(fishseen~ y + wc + cd + bd + d + lat |1.)
+nbmod6g3=zeroinfl(nbform6g3,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g3)
+
+nbform6g4=formula(fishseen~ y + wc + cd + sc + d + lat |1.)
+nbmod6g4=zeroinfl(nbform6g4,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g4)
+
+###Remove depth from mean
+nbform6g5=formula(fishseen~ y + wc + cd + sc + bd + lat |1.)
+nbmod6g5=zeroinfl(nbform6g5,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g5)
+
+
+#### Remove Latitude From mean 
+nbform6g6=formula(fishseen~ y + wc + cd + sc + bd + d |1.)
+nbmod6g6=zeroinfl(nbform6g6,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g6)
+
+
+lrtest(nbmod6g1,nbmod6g)
+lrtest(nbmod6g2,nbmod6g)
+lrtest(nbmod6g3,nbmod6g)
+lrtest(nbmod6g4,nbmod6g)
+lrtest(nbmod6g5,nbmod6g)
+lrtest(nbmod6g6,nbmod6g)
+AIC(nbmod6g)
+AIC(nbmod6g1)
+AIC(nbmod6g2)
+AIC(nbmod6g3)
+AIC(nbmod6g4)
+AIC(nbmod6g5)
+AIC(nbmod6g6)
+AIC(nbmod6g)-AIC(nbmod6g1)
+AIC(nbmod6g)-AIC(nbmod6g2)
+AIC(nbmod6g)-AIC(nbmod6g3)
+AIC(nbmod6g)-AIC(nbmod6g4)
+AIC(nbmod6g)-AIC(nbmod6g5)
+AIC(nbmod6g)-AIC(nbmod6g6)
+
+
+
+# Model 6g1 is the best performing so step down to it
+
+###Remove current variables from mean
+nbform6g1a=formula(fishseen~ y + sc + bd + d + lat |1.)
+nbmod6g1a=zeroinfl(nbform6g1a,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1a)
+
+###Remove benthic variables from mean
+nbform6g1b=formula(fishseen~ y + cd + bd + d + lat |1.)
+nbmod6g1b=zeroinfl(nbform6g1b,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1b)
+
+nbform6g1c=formula(fishseen~ y + cd + sc + d + lat |1.)
+nbmod6g1c=zeroinfl(nbform6g1c,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1c)
+
+###Remove depth from mean
+nbform6g1d=formula(fishseen~ y + cd + sc + bd + lat |1.)
+nbmod6g1d=zeroinfl(nbform6g1d,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1d)
+
+#### Remove Latitude From mean 
+nbform6g1e=formula(fishseen~ y + cd + sc + bd + d  |1.)
+nbmod6g1e=zeroinfl(nbform6g1e,  dist = "negbin", link = "logit",data=dat);summary(nbmod6g1e)
+
+
+lrtest(nbmod6g1a,nbmod6g1)
+lrtest(nbmod6g1b,nbmod6g1)
+lrtest(nbmod6g1c,nbmod6g1)
+lrtest(nbmod6g1d,nbmod6g1)
+lrtest(nbmod6g1e,nbmod6g1)
+AIC(nbmod6g1)
+AIC(nbmod6g1a)
+AIC(nbmod6g1b)
+AIC(nbmod6g1c)
+AIC(nbmod6g1d)
+AIC(nbmod6g1e)
+AIC(nbmod6g1)-AIC(nbmod6g1a)
+AIC(nbmod6g1)-AIC(nbmod6g1b)
+AIC(nbmod6g1)-AIC(nbmod6g1c)
+AIC(nbmod6g1)-AIC(nbmod6g1d)
+AIC(nbmod6g1)-AIC(nbmod6g1e)
+
+
+# Model 6g1 is the best performing for the positive part of the model
 ##Now conduct variable selection on the binomial part
-###Remove water clarity and current variables from mean
-nbform1=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + cd + sc + bd + d + t + lat + temp +offset(frames))
+nbform0=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + bd + d + lat)
+nbmod0=zeroinfl(nbform0,  dist = "negbin", link = "logit",data=dat);summary(nbmod0)
+
+###Remove year from mean
+nbform1=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + bd + d + lat)
 nbmod1=zeroinfl(nbform1,  dist = "negbin", link = "logit",data=dat);summary(nbmod1)
 
-nbform2=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + bd + d + t + lat + temp +offset(frames))
+###Remove current variables from mean
+nbform2=formula(fishseen~ y + cd + sc + bd + d + lat |y + sc + bd + d + lat)
 nbmod2=zeroinfl(nbform2,  dist = "negbin", link = "logit",data=dat);summary(nbmod2)
 
-
 ###Remove benthic variables from mean
-nbform3=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + bd + d + t + lat + temp +offset(frames))
+nbform3=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + bd + d + lat)
 nbmod3=zeroinfl(nbform3,  dist = "negbin", link = "logit",data=dat);summary(nbmod3)
 
-nbform4=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + d + t + lat + temp +offset(frames))
+nbform4=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + d + lat)
 nbmod4=zeroinfl(nbform4,  dist = "negbin", link = "logit",data=dat);summary(nbmod4)
 
 ###Remove depth from mean
-nbform5=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + t + lat + temp +offset(frames))
+nbform5=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + bd + lat)
 nbmod5=zeroinfl(nbform5,  dist = "negbin", link = "logit",data=dat);summary(nbmod5)
 
-#### Remove Season From mean 
-nbform6=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + lat + temp +offset(frames))
+#### Remove Latitude From mean 
+nbform6=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + bd + d)
 nbmod6=zeroinfl(nbform6,  dist = "negbin", link = "logit",data=dat);summary(nbmod6)
 
-#### Remove Latitude From mean 
-nbform7=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + temp +offset(frames))
-nbmod7=zeroinfl(nbform7,  dist = "negbin", link = "logit",data=dat);summary(nbmod7)
-
-#### Remove Temperature From mean 
-nbform8=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + bd + d + t + lat +offset(frames))
-nbmod8=zeroinfl(nbform8,  dist = "negbin", link = "logit",data=dat);summary(nbmod8)
-
-lrtest(nbmod1,nbmod)
-lrtest(nbmod2,nbmod)
-lrtest(nbmod3,nbmod)
-lrtest(nbmod4,nbmod)
-lrtest(nbmod5,nbmod)
-lrtest(nbmod6,nbmod)
-lrtest(nbmod7,nbmod)
-lrtest(nbmod8,nbmod)
-AIC(nbmod)
+lrtest(nbmod0,nbmod6g1)
+lrtest(nbmod1,nbmod6g1)
+lrtest(nbmod2,nbmod6g1)
+lrtest(nbmod3,nbmod6g1)
+lrtest(nbmod4,nbmod6g1)
+lrtest(nbmod5,nbmod6g1)
+lrtest(nbmod6,nbmod6g1)
+AIC(nbmod6g1)
+AIC(nbmod0)
 AIC(nbmod1)
 AIC(nbmod2)
 AIC(nbmod3)
 AIC(nbmod4)
 AIC(nbmod5)
 AIC(nbmod6)
-AIC(nbmod7)
-AIC(nbmod8)
-AIC(nbmod)-AIC(nbmod1)
-AIC(nbmod)-AIC(nbmod2)
-AIC(nbmod)-AIC(nbmod3)
-AIC(nbmod)-AIC(nbmod4)
-AIC(nbmod)-AIC(nbmod5)
-AIC(nbmod)-AIC(nbmod6)
-AIC(nbmod)-AIC(nbmod7)
-AIC(nbmod)-AIC(nbmod8)
+AIC(nbmod6g1)-AIC(nbmod0)
+AIC(nbmod6g1)-AIC(nbmod1)
+AIC(nbmod6g1)-AIC(nbmod2)
+AIC(nbmod6g1)-AIC(nbmod3)
+AIC(nbmod6g1)-AIC(nbmod4)
+AIC(nbmod6g1)-AIC(nbmod5)
+AIC(nbmod6g1)-AIC(nbmod6)
 
 
-##Start with nbform4 which has bd removed##
-###Remove water clarity and current variables from mean
-nbform4a=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + cd + sc + d + t + lat + temp +offset(frames))
+
+# Model 4 is the best performing for the binomial part of the model
+
+###Remove year from mean
+nbform4a=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + d + lat)
 nbmod4a=zeroinfl(nbform4a,  dist = "negbin", link = "logit",data=dat);summary(nbmod4a)
 
-nbform4b=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + d + t + lat + temp +offset(frames))
+###Remove current variables from mean
+nbform4b=formula(fishseen~ y + cd + sc + bd + d + lat |y + sc + d + lat)
 nbmod4b=zeroinfl(nbform4b,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b)
 
-
 ###Remove benthic variables from mean
-nbform4c=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + d + t + lat + temp +offset(frames))
+nbform4c=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + d + lat)
 nbmod4c=zeroinfl(nbform4c,  dist = "negbin", link = "logit",data=dat);summary(nbmod4c)
 
-
 ###Remove depth from mean
-nbform4d=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc +t + lat + temp +offset(frames))
+nbform4d=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + lat)
 nbmod4d=zeroinfl(nbform4d,  dist = "negbin", link = "logit",data=dat);summary(nbmod4d)
 
-#### Remove Season From mean 
-nbform4e=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + d +lat + temp +offset(frames))
-nbmod4e=zeroinfl(nbform4e,  dist = "negbin", link = "logit",data=dat);summary(nbmod4e)
-
 #### Remove Latitude From mean 
-nbform4f=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + d + t + temp +offset(frames))
-nbmod4f=zeroinfl(nbform4f,  dist = "negbin", link = "logit",data=dat);summary(nbmod4f)
-
-#### Remove Temperature From mean 
-nbform4g=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + cd + sc + d + t + lat +offset(frames))
-nbmod4g=zeroinfl(nbform4g,  dist = "negbin", link = "logit",data=dat);summary(nbmod4g)
+nbform4e=formula(fishseen~ y + cd + sc + bd + d + lat |y + cd + sc + d)
+nbmod4e=zeroinfl(nbform4e,  dist = "negbin", link = "logit",data=dat);summary(nbmod4e)
 
 lrtest(nbmod4a,nbmod4)
 lrtest(nbmod4b,nbmod4)
 lrtest(nbmod4c,nbmod4)
 lrtest(nbmod4d,nbmod4)
 lrtest(nbmod4e,nbmod4)
-lrtest(nbmod4f,nbmod4)
-lrtest(nbmod4g,nbmod4)
 AIC(nbmod4)
 AIC(nbmod4a)
 AIC(nbmod4b)
 AIC(nbmod4c)
 AIC(nbmod4d)
 AIC(nbmod4e)
-AIC(nbmod4f)
-AIC(nbmod4g)
-AIC(nbmod4)-AIC(nbmod4a)
-AIC(nbmod4)-AIC(nbmod4b)
-AIC(nbmod4)-AIC(nbmod4c)
-AIC(nbmod4)-AIC(nbmod4d)
-AIC(nbmod4)-AIC(nbmod4e)
-AIC(nbmod4)-AIC(nbmod4f)
-AIC(nbmod4)-AIC(nbmod4g)
+AIC(nbmod4a)-AIC(nbmod4)
+AIC(nbmod4b)-AIC(nbmod4)
+AIC(nbmod4c)-AIC(nbmod4)
+AIC(nbmod4d)-AIC(nbmod4)
+AIC(nbmod4e)-AIC(nbmod4)
 
 
-##Start with nbform4b which has bd removed##
-###Remove water clarity  from mean
-nbform4b1=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + sc + d + t + lat + temp +offset(frames))
-nbmod4b1=zeroinfl(nbform4b1,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b1)
+# Model 4a is the best performing for the binomial part of the model
 
+
+###Remove current variables from mean
+nbform4a1=formula(fishseen~ y + cd + sc + bd + d + lat |sc + d + lat)
+nbmod4a1=zeroinfl(nbform4a1,  dist = "negbin", link = "logit",data=dat);summary(nbmod4a1)
 
 ###Remove benthic variables from mean
-nbform4b2=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + d + t + lat + temp +offset(frames))
-nbmod4b2=zeroinfl(nbform4b2,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b2)
-
+nbform4a2=formula(fishseen~ y + cd + sc + bd + d + lat |cd + d + lat)
+nbmod4a2=zeroinfl(nbform4a2,  dist = "negbin", link = "logit",data=dat);summary(nbmod4a2)
 
 ###Remove depth from mean
-nbform4b3=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + t + lat + temp +offset(frames))
-nbmod4b3=zeroinfl(nbform4b3,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b3)
-
-#### Remove Season From mean 
-nbform4b4=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + d + lat + temp +offset(frames))
-nbmod4b4=zeroinfl(nbform4b4,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b4)
+nbform4a3=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + lat)
+nbmod4a3=zeroinfl(nbform4a3,  dist = "negbin", link = "logit",data=dat);summary(nbmod4a3)
 
 #### Remove Latitude From mean 
-nbform4b5=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + d + t + temp +offset(frames))
-nbmod4b5=zeroinfl(nbform4b5,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b5)
+nbform4a4=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + d)
+nbmod4a4=zeroinfl(nbform4a4,  dist = "negbin", link = "logit",data=dat);summary(nbmod4a4)
 
-#### Remove Temperature From mean 
-nbform4b6=formula(fishseen~ y + wc + cd + sc + bd + d + t + lat + temp +offset(frames)|y + wc + sc + d + t + lat + offset(frames))
-nbmod4b6=zeroinfl(nbform4b6,  dist = "negbin", link = "logit",data=dat);summary(nbmod4b6)
-
-lrtest(nbmod4b1,nbmod4b)
-lrtest(nbmod4b2,nbmod4b)
-lrtest(nbmod4b3,nbmod4b)
-lrtest(nbmod4b4,nbmod4b)
-lrtest(nbmod4b5,nbmod4b)
-lrtest(nbmod4b6,nbmod4b)
-AIC(nbmod4b)
-AIC(nbmod4b1)
-AIC(nbmod4b2)
-AIC(nbmod4b3)
-AIC(nbmod4b4)
-AIC(nbmod4b5)
-AIC(nbmod4b6)
-AIC(nbmod4b)-AIC(nbmod4b1)
-AIC(nbmod4b)-AIC(nbmod4b2)
-AIC(nbmod4b)-AIC(nbmod4b3)
-AIC(nbmod4b)-AIC(nbmod4b4)
-AIC(nbmod4b)-AIC(nbmod4b5)
-AIC(nbmod4b)-AIC(nbmod4b6)
+lrtest(nbmod4a1,nbmod4a)
+lrtest(nbmod4a2,nbmod4a)
+lrtest(nbmod4a3,nbmod4a)
+lrtest(nbmod4a4,nbmod4a)
+AIC(nbmod4a)
+AIC(nbmod4a1)
+AIC(nbmod4a2)
+AIC(nbmod4a3)
+AIC(nbmod4a4)
+AIC(nbmod4a1)-AIC(nbmod4a)
+AIC(nbmod4a2)-AIC(nbmod4a)
+AIC(nbmod4a3)-AIC(nbmod4a)
+AIC(nbmod4a4)-AIC(nbmod4a)
 
 
-#nbmod4b is best
-nbbest=nbmod4b
+
+
+
+###Best Model is nbmod4a
+#nbform4a=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + d + lat)
+
+nbbest=nbmod4a
 
 windows(width=8,height=6,record=T)
 resids=residuals(nbbest)
@@ -407,26 +534,22 @@ plot(fitted(nbbest),resids)
 plot(dat$fishseen,fitted(nbbest))
 
 plot(dat$y,resids,xlab="Year",main="Residuals (nbbest)")
-plot(dat$wc,resids,xlab="Water Clarity",main="Residuals (nbbest)")
 plot(dat$cd,resids,xlab="Current Direction",main="Residuals (nbbest)")
 plot(dat$sc,resids,xlab="Substrate Composition",main="Residuals (nbbest)")
 plot(dat$bd,resids,xlab="Biotic Diversity",main="Residuals (nbbest)")
 plot(dat$d,resids,xlab="Depth",main="Residuals (nbbest)")
-plot(dat$t,resids,xlab="Season",main="Residuals (nbbest)")
 plot(dat$lat,resids,xlab="Latitude",main="Residuals (nbbest)")
-plot(dat$temp,resids,xlab="Water Temperature",main="Residuals (nbbest)")
 
 hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='NB')  
 d3=hist(predict(nbbest),breaks=0:max(dat$fishseen),plot=FALSE)
 lines(seq(0.5,max(dat$fishseen),by=1),d3$counts, col="blue",type='l')      
 hist(dat$fishseen,breaks=0:max(dat$fishseen),freq=T,right=TRUE,xlab='Aggregate Fish Counted', main='NB',ylim=c(0,50))  
 lines(seq(0.5,max(dat$fishseen),by=1),d3$counts, col="blue",type='l')      
-#lines(seq(0.5,max(dat$fishseen),by=1),d2$counts, col="red",type='l')      
-#lines(seq(0.5,max(dat$fishseen),by=1),d$counts, col="green",type='l')      
+lines(seq(0.5,max(dat$fishseen),by=1),d2$counts, col="red",type='l')      
 
 
 new.dat=expand.grid(y=levels(dat$y),
-                    wc=levels(dat$wc),
+                    #wc=levels(dat$wc),
                     #cm=levels(dat$cm),
                     cd=levels(dat$cd),
                     sc=levels(dat$sc),
@@ -434,11 +557,12 @@ new.dat=expand.grid(y=levels(dat$y),
                     #bt=levels(dat$bt),
                     #bh=levels(dat$bh),
                     d=levels(dat$d),
-                    t=levels(dat$t),
-                    lat=levels(dat$lat),
-                    temp=levels(dat$temp),
-                    tod=levels(dat$tod),
-                    frames=1)
+                    #t=levels(dat$t),
+                    lat=levels(dat$lat)
+                    #temp=levels(dat$temp)
+                    #tod=levels(dat$tod),
+                    #frames=1)
+                    )
 
 new.dat=cbind(new.dat,predict(nbbest,new.dat))
 names(new.dat)[dim(new.dat)[2]]="Predicted"
@@ -446,5 +570,80 @@ resvec=summaryBy(Predicted~y,data=new.dat,FUN=mean)[,2]
 index = resvec/mean(resvec)
 index = resvec/max(resvec)
 
-plot(index,type='b')
+plot(index,type='b',ylim=c(0,4))
+
+
+
+
+
+#set up data objects and specify number of bootstrap replications
+ptm <- proc.time()
+boots=50
+#nbform4a=formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + d + lat)
+org.dat=dat[,c(1,3,5,7,10,13,15)];head(org.dat)
+boot.dat=org.dat
+numyrs=length(levels(org.dat$y));numyrs
+index.boot=matrix(NA,nrow=boots,ncol=numyrs)
+predmean.boot=index.boot
+yr.samp=summaryBy(~y,data=org.dat,FUN=length)[,2]
+
+#start bootstrap loop
+for(boot in 1:boots){
+  
+  #Get bootstrap data for current replicate
+  for(i in 1:numyrs){
+    yr.rows=org.dat$y==levels(org.dat$y)[i]
+    sub.dat=org.dat[yr.rows,]
+    yr.boot=round(runif(yr.samp[i],1,yr.samp[i]),0)
+    boot.dat[yr.rows,]=sub.dat[yr.boot,]
+  }
+  
+  #make a function to compute the index and return either a valid index or NA conditional on if the model converges
+  getindex=function(){
+    #define and fit model for current replicate.  Use the "try" function so that can continue to run if model does not converge
+    #on a particular replication  
+    f2 <- formula(fishseen~ y + cd + sc + bd + d + lat |cd + sc + d + lat)
+    Nb2 <- try(zeroinfl(f2, dist = "negbin", link = "logit", data = boot.dat)); Nb2
+    
+    #see if model converged, if it did, return the mean year effect over all covariate combinations
+    # If it did not converge, return an NA vector for the year effects
+    if (class(Nb2) != "try-error"){
+      #Predict the year effect (index) by predicting for each covariate level and compute the mean
+      new.dat=expand.grid(y=levels(dat$y),
+                    cd=levels(dat$cd),
+                    sc=levels(dat$sc),
+                    bd=levels(dat$bd),
+                    d=levels(dat$d),
+                    lat=levels(dat$lat)
+                    )
+      new.dat=cbind(new.dat,predict(Nb2,new.dat))
+      names(new.dat)[7]="Predicted"
+      resvec=summaryBy(Predicted~y,data=new.dat,FUN=mean)[,2]
+      return(resvec)
+    }  
+    resvec=rep(NA,numyrs)
+    return(resvec)
+  }
+  
+  #Call the getindex function for each bootstrap replicate
+  predmean.boot[boot,]=getindex()
+  index.boot[boot,]=predmean.boot[boot,]/mean(predmean.boot[boot,])
+}
+
+
+#exclude runs that did not converge and compute the convergence rate
+conv.index=index.boot[!is.na(index.boot[,1]),]
+convrate=dim(conv.index)[1]/dim(index.boot)[1];convrate
+
+
+(proc.time() - ptm)[3]/60
+conv.index
+
+cI=apply(conv.index,2,quantile,c(0.025,0.5,0.975))
+
+matplot(t(cI),type='l',ylim=c(0,4))
+index = resvec/mean(resvec)
+lines(index,type='b',ylim=c(0,4))
+
+
 
